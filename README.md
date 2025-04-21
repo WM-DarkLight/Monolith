@@ -1,6 +1,6 @@
 # Monolith Adventure Engine
 
-![Screenshot 2025-04-21 201746](https://github.com/user-attachments/assets/ba3e8a3e-589e-4f17-9570-05fee687b1b7)
+![Screenshot 2025-04-21 225715](https://github.com/user-attachments/assets/215e1d40-df2f-4ae8-8550-7943b685b092)
 
 
 ## Overview
