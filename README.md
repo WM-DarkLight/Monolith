@@ -1,125 +1,82 @@
-Monolith Engine
+# Monolith Adventure Engine
 
-"In the dust-choked echoes of the end, stories still matter. The Monolith remembers."
+![Monolith Adventure Engine](https://placeholder.svg?height=200&width=600&text=Monolith+Adventure+Engine)
 
-Monolith is a modular, narrative-focused engine for building text-based RPGs with rich branching choices, dynamic flags, skill/perk systems, and a persistent story state. It is built in Next.js + TypeScript + React, designed to power episodic or scene-driven narrative games in the spirit of Fallout 2, Sunless Sea, and Disco Elysium.
+## Overview
 
-✨ Features
+Monolith Adventure Engine is a powerful text-based adventure game framework built with Next.js and TypeScript. It provides a robust foundation for creating immersive, choice-driven narrative experiences with RPG elements such as skills, perks, inventory management, and more.
 
-• Scene-Based Navigation
+Set in a post-apocalyptic wasteland, the engine comes with a retro-futuristic UI inspired by classic RPGs like Fallout, but can be customized to fit any setting or theme.
 
-Each episode contains a set of uniquely identified scenes.
+## Key Features
 
-Choices move the player between scenes using scene: "scene-id".
+- **Rich Text-Based Adventures**: Create branching narratives with multiple paths and endings
+- **Skill System**: Character skills that affect gameplay options and outcomes
+- **Perk System**: Unlockable abilities that provide unique bonuses and gameplay options
+- **Inventory Management**: Item collection, usage, and management
+- **Save System**: Multiple save slots with auto-save functionality
+- **Character Creation**: Custom character building with skill allocation
+- **Skill Checks**: Challenge-based gameplay with probability of success based on character skills
+- **Journal System**: Automatic tracking of player choices and story progression
+- **Responsive Design**: Works on desktop and mobile devices
 
-• Conditional Branching
+## Getting Started
 
-Use flags, inventory, and skills to gate options and change content dynamically.
+### Prerequisites
 
-Supports passive checks or explicit player-triggered logic.
+- Node.js 16.x or higher
+- npm or yarn
 
-• Inventory System
+### Installation
 
-Add/remove/check for items.
+1. Clone the repository:
+\`\`\`bash
+git clone https://github.com/yourusername/monolith-adventure-engine.git
+cd monolith-adventure-engine
+\`\`\`
 
-Scene options can require or grant items.
-
-• Skills and Perks
-
-Scenes can include skillChecks or perk-based conditions.
-
-Perks modify options, descriptions, or outcomes.
-
-• Reputation System
-
-Faction-based or individual-based reputation tracking.
-
-Affects branching scenes, trust scores, or conditional dialogue.
-
-• Multiple Endings + Replay
-
-Easily define narrative end states.
-
-Includes restart mechanics with memory (carry flags/perks forward).
-
-• Modular Episodes
-
-Each episode is a self-contained .ts file.
-
-Episodes can be swapped, reordered, or injected dynamically.
-
-• State Management
-
-Global state managed through a single hook (useGameState).
-
-Handles flags, inventory, skill states, reputation, current scene, and player memory.
-📂 Folder Structure
-
-monolith-engine/
-├── episodes/              # Episode definitions (scene graphs)
-├── types/                 # Shared interfaces (Episode, Scene, Option, etc.)
-├── ui/                    # UI components (TextDisplay, OptionsPanel, etc.)
-├── app.tsx                # Main entry point
-├── state.ts               # Global game state + logic
-├── components/            # Reusable logic-bound UI pieces
-├── public/                # Static files
-└── README.md              # This file
-
-🚀 Getting Started
-
-1. Clone and install dependencies
-
-git clone https://github.com/yourusername/monolith-engine.git
-cd monolith-engine
+2. Install dependencies:
+\`\`\`bash
 npm install
+# or
+yarn install
+\`\`\`
 
-2. Start the dev server
-
+3. Run the development server:
+\`\`\`bash
 npm run dev
+# or
+yarn dev
+\`\`\`
 
-3. Open in browser
+4. Open [http://localhost:3000](http://localhost:3000) in your browser to see the game.
 
-Visit http://localhost:3000 to begin.
+## Basic Usage
 
-📚 Episode Format
+The Monolith Adventure Engine comes with several example episodes to demonstrate its capabilities. To start playing:
 
-Each episode is defined in a TypeScript file, exporting a single Episode object.
+1. Launch the application
+2. Select "Episodes" from the dashboard
+3. Choose an episode to begin your adventure
 
-export const abandonedBunkerEpisode: Episode = {
-  id: "abandoned-bunker",
-  initialScene: "bunker-entrance",
-  scenes: {
-    "bunker-entrance": {
-      id: "bunker-entrance",
-      text: "You see a half-buried hatch...",
-      options: [
-        { id: "descend", text: "Go inside", scene: "control-room" },
-        { id: "leave", text: "Walk away", scene: "ending-leave" },
-      ],
-    },
-    // More scenes here...
-  },
-};
+To create your own episodes and extend the engine, see the [Developer Documentation](DEVELOPER.md).
 
-You can add conditions, setFlags, requiredItems, reputationChanges, and more.
+## Technologies Used
 
-🛠️ Built With
+- **Next.js**: React framework for the application
+- **TypeScript**: Type-safe JavaScript
+- **TailwindCSS**: Utility-first CSS framework for styling
+- **IndexedDB**: Browser database for save game storage
+- **LZ-String**: Compression library for efficient save data storage
 
-Next.js - Framework for React
+## License
 
-TypeScript - Static typing for safer logic
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-React - Component-based UI system
+## Acknowledgments
 
-📊 Roadmap
-
-
-
-📜 License
-
-MIT License.
-Free to use, modify, and build upon. Attribution appreciated.
-
+- Inspired by classic text-based adventures and RPGs
+- UI design influenced by post-apocalyptic games like Fallout
 
 ## Further Documentation
 
