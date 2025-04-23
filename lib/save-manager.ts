@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid"
 import { get, getAll, put, remove } from "@/lib/db"
 import type { GameState } from "@/types/game"
-import type { SavedGame, SaveSlot } from "@/types/save"
+import type { SaveSlot } from "@/types/save"
 import { compressData, decompressData } from "@/lib/compression"
 
 // Current version of save data format
@@ -9,9 +9,35 @@ const SAVE_DATA_VERSION = "1.0.0"
 const MAX_SAVE_SLOTS = 10
 const AUTO_SAVE_SLOT_ID = "auto-save"
 
+// Update the SavedGame interface to include currentSceneId
+export interface SavedGame {
+  id: string
+  slotId?: string
+  name: string
+  episodeId: string
+  sceneId?: string | null
+  episodeTitle: string
+  timestamp: string
+  gameState: GameState
+  stats: Stats
+  version: string
+  thumbnail: string
+  compressed: boolean
+  campaignId?: string
+  campaignEpisodeIndex?: number
+}
+
+// Define the Stats interface
+export interface Stats {
+  health: number
+  energy: number
+  // Add other stats properties as needed
+}
+
 /**
  * Save game data to IndexedDB
  */
+// Update the saveGame function to include sceneId
 export async function saveGame(
   saveData: Omit<SavedGame, "id" | "version" | "thumbnail" | "compressed">,
 ): Promise<string> {
@@ -130,6 +156,7 @@ export async function updateSavedGame(id: string, updates: Partial<SavedGame>): 
 /**
  * Auto-save the current game state
  */
+// Update the autoSaveGame function to include sceneId
 export async function autoSaveGame(
   saveData: Omit<SavedGame, "id" | "version" | "thumbnail" | "compressed">,
 ): Promise<void> {
@@ -211,10 +238,11 @@ export async function getSaveSlots(): Promise<SaveSlot[]> {
 /**
  * Generate a simple text-based thumbnail representation of the game state
  */
+// Update the generateThumbnail function to include sceneId
 function generateThumbnail(gameState: GameState): string {
-  // For now, just return the episode ID and some stats
+  // For now, just return the episode ID, scene ID, and some stats
   // In a production game, this could be a base64 encoded small image
-  return `EP:${gameState.currentEpisodeId}|H:${gameState.stats.health}|E:${gameState.stats.energy}|I:${gameState.inventory.length}`
+  return `EP:${gameState.currentEpisodeId}|SC:${gameState.currentSceneId || "none"}|H:${gameState.stats.health}|E:${gameState.stats.energy}|I:${gameState.inventory.length}`
 }
 
 /**

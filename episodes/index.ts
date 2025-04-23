@@ -6,8 +6,10 @@ import { ancientChamberEpisode } from "./ancient-chamber"
 import { monolithRoomEpisode } from "./monolith-room"
 import { skillTestEpisode } from "./skill-test"
 import { perkShowcaseEpisode } from "./perk-showcase"
-// Add the new episode to the imports
 import { perkShowcaseObservedEpisode } from "./perk-showcase-observed"
+import { abandonedBunkerEpisode } from "./abandoned-bunker"
+import { factionOutpostEpisode } from "./faction-outpost"
+import guardEncounter from "./guard-encounter"
 
 // Central registry of all episodes
 export const episodeRegistry: EpisodeRegistry = {
@@ -19,4 +21,7 @@ export const episodeRegistry: EpisodeRegistry = {
   "skill-test": skillTestEpisode,
   "perk-showcase": perkShowcaseEpisode,
   "perk-showcase-observed": perkShowcaseObservedEpisode,
+  "abandoned-bunker": abandonedBunkerEpisode,
+  "faction-outpost": factionOutpostEpisode,
+  "guard-encounter": guardEncounter,
 }

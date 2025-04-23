@@ -454,3 +454,23 @@ select.wasteland-input {
 .bg-darker-gray {
   background-color: var(--darker-gray);
 }
+
+/* Add these styles at the end of the file to ensure buttons are clickable */
+
+/* Fix for button click issues */
+button {
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+}
+
+button:focus {
+  outline: 1px solid var(--gold);
+}
+
+/* Ensure header buttons are clickable */
+.dashboard-header button,
+.flex.items-center.gap-2 button {
+  z-index: 10;
+  position: relative;
+}

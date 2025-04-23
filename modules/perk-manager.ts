@@ -1,6 +1,7 @@
 import type { GameState } from "@/types/game"
 import type { Perk, PlayerPerks } from "@/types/perks"
 import { perks } from "@/data/perks"
+import { EffectsManager } from "@/modules/effects-manager"
 
 export class PerkManager {
   static readonly DEFAULT_PLAYER_PERKS: PlayerPerks = {
@@ -106,49 +107,23 @@ export class PerkManager {
       perks: updatedPerks,
     }
 
-    // Apply stat effects
-    if (perk.effects.stats) {
-      const stats = { ...gameState.stats }
-
-      for (const [stat, value] of Object.entries(perk.effects.stats)) {
-        if (stat in stats) {
-          stats[stat] += value
-        }
+    // Create an effect for this perk
+    if (perk.effects) {
+      const perkEffect = {
+        name: perk.name,
+        description: perk.description,
+        source: "perk" as const,
+        sourceId: perkId,
+        duration: { type: "permanent" as const },
+        statModifiers: perk.effects.stats,
+        skillModifiers: perk.effects.skills,
+        flagModifiers: perk.effects.setFlags,
+        icon: perk.icon,
+        tags: ["perk", perk.id],
       }
 
-      updatedGameState = {
-        ...updatedGameState,
-        stats,
-      }
-    }
-
-    // Apply skill effects
-    if (perk.effects.skills) {
-      const skills = { ...gameState.skills }
-
-      for (const [skill, value] of Object.entries(perk.effects.skills)) {
-        if (skill in skills) {
-          skills[skill] += value
-          // Clamp between 1-10
-          skills[skill] = Math.max(1, Math.min(10, skills[skill]))
-        }
-      }
-
-      updatedGameState = {
-        ...updatedGameState,
-        skills,
-      }
-    }
-
-    // Set flags
-    if (perk.effects.setFlags) {
-      updatedGameState = {
-        ...updatedGameState,
-        flags: {
-          ...updatedGameState.flags,
-          ...perk.effects.setFlags,
-        },
-      }
+      // Add the effect to the game state
+      updatedGameState = EffectsManager.addEffect(updatedGameState, perkEffect)
     }
 
     return updatedGameState
@@ -176,13 +151,29 @@ export class PerkManager {
     }
 
     // Apply artifact effects to game state
-    const updatedGameState = {
+    let updatedGameState = {
       ...gameState,
       perks: updatedPerks,
     }
 
-    // Apply effects and drawbacks
-    // (Similar to unlockPerk but also applying drawbacks)
+    // Create an effect for this artifact
+    if (perk.effects) {
+      const artifactEffect = {
+        name: perk.name,
+        description: perk.description,
+        source: "perk" as const,
+        sourceId: perkId,
+        duration: { type: "conditional" as const, condition: { flags: { artifactUnequipped: true } } },
+        statModifiers: perk.effects.stats,
+        skillModifiers: perk.effects.skills,
+        flagModifiers: perk.effects.setFlags,
+        icon: perk.icon,
+        tags: ["artifact", perk.id],
+      }
+
+      // Add the effect to the game state
+      updatedGameState = EffectsManager.addEffect(updatedGameState, artifactEffect)
+    }
 
     return updatedGameState
   }
@@ -200,13 +191,34 @@ export class PerkManager {
     }
 
     // Remove artifact effects from game state
-    const updatedGameState = {
+    let updatedGameState = {
       ...gameState,
       perks: updatedPerks,
+      flags: {
+        ...gameState.flags,
+        artifactUnequipped: true, // This will trigger the removal of conditional effects
+      },
     }
 
-    // Remove effects and drawbacks
-    // (Reverse of equipArtifact)
+    // Find and remove any effects from this artifact
+    if (gameState.effects) {
+      const artifactEffects = gameState.effects.activeEffects.filter(
+        (effect) => effect.source === "perk" && effect.sourceId === perkId,
+      )
+
+      artifactEffects.forEach((effect) => {
+        updatedGameState = EffectsManager.removeEffect(updatedGameState, effect.id)
+      })
+    }
+
+    // Remove the temporary flag
+    updatedGameState = {
+      ...updatedGameState,
+      flags: {
+        ...updatedGameState.flags,
+        artifactUnequipped: undefined,
+      },
+    }
 
     return updatedGameState
   }

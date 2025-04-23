@@ -1,5 +1,6 @@
 import type { GameState, Skills, SkillCheckResult } from "@/types/game"
 import type { SkillCheck } from "@/types/episode"
+import { EffectsManager } from "@/modules/effects-manager"
 
 export class SkillManager {
   static readonly DEFAULT_SKILLS: Skills = {
@@ -44,8 +45,14 @@ export class SkillManager {
   static performSkillCheck(gameState: GameState, skillCheck: SkillCheck): SkillCheckResult {
     const { skill, difficulty, bonus } = skillCheck
 
-    // Get the player's skill value
-    const playerSkillValue = gameState.skills[skill] || 1
+    // Get the player's base skill value
+    const playerBaseSkillValue = gameState.skills[skill] || 1
+
+    // Get skill modifiers from effects
+    const effectsModifier = EffectsManager.getTotalSkillModifier(gameState, skill)
+
+    // Calculate total skill value with effects
+    const playerSkillValue = Math.max(1, Math.min(10, playerBaseSkillValue + effectsModifier))
 
     // Calculate any bonuses
     let bonusValue = 0
@@ -67,7 +74,10 @@ export class SkillManager {
     const roll = Math.floor(Math.random() * 5) + 1
 
     // Add luck bonus (0-2 based on luck stat)
-    const luckBonus = Math.floor((gameState.skills.luck || 5) / 5)
+    const baseLuck = gameState.skills.luck || 5
+    const luckEffectsModifier = EffectsManager.getTotalSkillModifier(gameState, "luck")
+    const totalLuck = Math.max(1, Math.min(10, baseLuck + luckEffectsModifier))
+    const luckBonus = Math.floor(totalLuck / 5)
 
     // Calculate total score
     const totalScore = playerSkillValue + bonusValue + roll + luckBonus
@@ -75,7 +85,8 @@ export class SkillManager {
     // Check if the skill check was successful
     const success = totalScore >= difficulty
 
-    return {
+    // Create the result
+    const result: SkillCheckResult = {
       success,
       skillName: skill,
       playerValue: playerSkillValue,
@@ -84,6 +95,31 @@ export class SkillManager {
       roll: roll,
       luckBonus: luckBonus,
     }
+
+    // Trigger any effects that should happen on skill checks
+    // This could be implemented by adding a context to triggerEffect
+    if (gameState.effects) {
+      const context = {
+        type: "skillCheck",
+        skill,
+        difficulty,
+        success,
+        result,
+      }
+
+      // Find effects that should trigger on skill checks
+      gameState.effects.activeEffects.forEach((effect) => {
+        if (effect.isActive && effect.onTrigger) {
+          // Check if this effect should trigger on this skill check
+          const shouldTrigger = effect.applyCondition?.skills?.[skill] !== undefined
+          if (shouldTrigger) {
+            gameState = EffectsManager.triggerEffect(gameState, effect.id, context)
+          }
+        }
+      })
+    }
+
+    return result
   }
 
   static getSkillLevel(value: number): string {
@@ -116,7 +152,7 @@ export class SkillManager {
 
     if (gap > 7) return 0 // Impossible (beyond max roll + max luck bonus)
 
-    // Calculate probability based on possible dice rolls and luck bonus
+    // Calculate probability based on possible dice rolls and luck bonuses
     let successCases = 0
     const totalCases = 5 * 3 // 5 possible dice rolls (1-5) * 3 possible luck bonuses (0-2)
 
@@ -129,5 +165,12 @@ export class SkillManager {
     }
 
     return Math.round((successCases / totalCases) * 100)
+  }
+
+  // Get the effective skill value including all effects
+  static getEffectiveSkill(gameState: GameState, skillName: keyof Skills): number {
+    const baseValue = gameState.skills[skillName] || 1
+    const effectsModifier = EffectsManager.getTotalSkillModifier(gameState, skillName)
+    return Math.max(1, Math.min(10, baseValue + effectsModifier))
   }
 }

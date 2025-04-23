@@ -1,6 +1,7 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb"
 import type { SavedGame } from "@/types/save"
 import type { EpisodeSummary } from "@/types/episode"
+import type { CampaignProgress } from "@/types/campaign"
 
 interface MonolithDB extends DBSchema {
   saves: {
@@ -12,6 +13,10 @@ interface MonolithDB extends DBSchema {
     key: string
     value: EpisodeSummary
   }
+  campaignProgress: {
+    key: string
+    value: CampaignProgress
+  }
 }
 
 let db: IDBPDatabase<MonolithDB> | null = null
@@ -19,18 +24,29 @@ let db: IDBPDatabase<MonolithDB> | null = null
 export async function initializeDatabase(): Promise<IDBPDatabase<MonolithDB>> {
   if (db) return db
 
-  db = await openDB<MonolithDB>("monolith-db", 1, {
-    upgrade(database) {
-      // Create saves store
-      const savesStore = database.createObjectStore("saves", {
-        keyPath: "id",
-      })
-      savesStore.createIndex("by-timestamp", "timestamp")
+  db = await openDB<MonolithDB>("monolith-db", 2, {
+    upgrade(database, oldVersion, newVersion) {
+      // Create saves store if it doesn't exist
+      if (!database.objectStoreNames.contains("saves")) {
+        const savesStore = database.createObjectStore("saves", {
+          keyPath: "id",
+        })
+        savesStore.createIndex("by-timestamp", "timestamp")
+      }
 
-      // Create episodes store
-      database.createObjectStore("episodes", {
-        keyPath: "id",
-      })
+      // Create episodes store if it doesn't exist
+      if (!database.objectStoreNames.contains("episodes")) {
+        database.createObjectStore("episodes", {
+          keyPath: "id",
+        })
+      }
+
+      // Create campaignProgress store if it doesn't exist (new in version 2)
+      if (oldVersion < 2 && !database.objectStoreNames.contains("campaignProgress")) {
+        database.createObjectStore("campaignProgress", {
+          keyPath: "campaignId",
+        })
+      }
     },
   })
 
