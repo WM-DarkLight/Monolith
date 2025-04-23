@@ -1,89 +1,125 @@
-🗿 Monolith Engine
+Monolith Engine
+
 "In the dust-choked echoes of the end, stories still matter. The Monolith remembers."
 
-Monolith is a modular, narrative-focused game engine built for crafting text-based RPGs with reactive storytelling, persistent world logic, and branching consequences.
-
-It powers scene-driven adventures in richly imagined worlds where your choices matter — and are remembered.
+Monolith is a modular, narrative-focused engine for building text-based RPGs with rich branching choices, dynamic flags, skill/perk systems, and a persistent story state. It is built in Next.js + TypeScript + React, designed to power episodic or scene-driven narrative games in the spirit of Fallout 2, Sunless Sea, and Disco Elysium.
 
 ✨ Features
-Scene-Based Navigation
-Author tightly scoped scenes connected by unique scene IDs.
 
-Flag System
-Track state using global flags. Unlock conditions, branch dialogue, or trigger story events.
+• Scene-Based Navigation
 
-Inventory System
-Add, remove, and check for items during gameplay. Useful for puzzles, exploration, and character progression.
+Each episode contains a set of uniquely identified scenes.
 
-Skill & Perk Checks
-Integrate character traits into dialogue and interaction. Influence choices based on character build.
+Choices move the player between scenes using scene: "scene-id".
 
-Reputation System
-Persistent faction or character-specific reputation values that influence the world’s response.
+• Conditional Branching
 
-Multiple Endings + Replay Support
-Let players reach narrative conclusions and restart with memory intact.
+Use flags, inventory, and skills to gate options and change content dynamically.
 
-Self-contained Episodes
-Each episode contains its own scenes, title, and logic. Easy to write, share, and expand.
+Supports passive checks or explicit player-triggered logic.
 
-📁 Folder Structure
-bash
-Copy
-Edit
-/episodes/           # Modular episode files (scene trees)
-/types/              # Shared TypeScript interfaces (Episode, Scene, etc.)
-/ui/                 # UI components (inventory, choices, stats)
-/state.ts            # Core game state manager
-/app.tsx             # Main game runner (React-based)
+• Inventory System
+
+Add/remove/check for items.
+
+Scene options can require or grant items.
+
+• Skills and Perks
+
+Scenes can include skillChecks or perk-based conditions.
+
+Perks modify options, descriptions, or outcomes.
+
+• Reputation System
+
+Faction-based or individual-based reputation tracking.
+
+Affects branching scenes, trust scores, or conditional dialogue.
+
+• Multiple Endings + Replay
+
+Easily define narrative end states.
+
+Includes restart mechanics with memory (carry flags/perks forward).
+
+• Modular Episodes
+
+Each episode is a self-contained .ts file.
+
+Episodes can be swapped, reordered, or injected dynamically.
+
+• State Management
+
+Global state managed through a single hook (useGameState).
+
+Handles flags, inventory, skill states, reputation, current scene, and player memory.
+📂 Folder Structure
+
+monolith-engine/
+├── episodes/              # Episode definitions (scene graphs)
+├── types/                 # Shared interfaces (Episode, Scene, Option, etc.)
+├── ui/                    # UI components (TextDisplay, OptionsPanel, etc.)
+├── app.tsx                # Main entry point
+├── state.ts               # Global game state + logic
+├── components/            # Reusable logic-bound UI pieces
+├── public/                # Static files
+└── README.md              # This file
+
 🚀 Getting Started
-Clone this repository:
 
-bash
-Copy
-Edit
+1. Clone and install dependencies
+
 git clone https://github.com/yourusername/monolith-engine.git
-Install dependencies:
-
-nginx
-Copy
-Edit
+cd monolith-engine
 npm install
-Start the development server:
 
-arduino
-Copy
-Edit
+2. Start the dev server
+
 npm run dev
-Open the app in your browser and start editing episodes in /episodes/.
 
-📜 Episode Structure Example
-ts
-Copy
-Edit
-export const bunkerEpisode: Episode = {
-  id: "bunker",
-  initialScene: "entrance",
+3. Open in browser
+
+Visit http://localhost:3000 to begin.
+
+📚 Episode Format
+
+Each episode is defined in a TypeScript file, exporting a single Episode object.
+
+export const abandonedBunkerEpisode: Episode = {
+  id: "abandoned-bunker",
+  initialScene: "bunker-entrance",
   scenes: {
-    "entrance": {
-      id: "entrance",
-      text: "You find a sealed metal door buried in sand.",
+    "bunker-entrance": {
+      id: "bunker-entrance",
+      text: "You see a half-buried hatch...",
       options: [
-        { id: "open", text: "Open it", scene: "hallway" },
-        { id: "leave", text: "Leave", scene: "ending" }
-      ]
-    }
-  }
-}
-🧱 Built For
-Text-based RPGs and IF games
+        { id: "descend", text: "Go inside", scene: "control-room" },
+        { id: "leave", text: "Walk away", scene: "ending-leave" },
+      ],
+    },
+    // More scenes here...
+  },
+};
 
-Systems-driven story structures
+You can add conditions, setFlags, requiredItems, reputationChanges, and more.
 
-Post-apocalyptic worlds, mystery arcs, or modular anthologies
+🛠️ Built With
+
+Next.js - Framework for React
+
+TypeScript - Static typing for safer logic
+
+React - Component-based UI system
+
+📊 Roadmap
+
+
 
 📜 License
-MIT License. Free to use, fork, and adapt. Attribution appreciated but not required.
+
+MIT License.
+Free to use, modify, and build upon. Attribution appreciated.
+
 
 ## Further Documentation
 
