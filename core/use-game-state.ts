@@ -4,6 +4,7 @@ import { useState, useCallback } from "react"
 import type { GameState } from "@/types/game"
 import { SkillManager } from "@/modules/skill-manager"
 import { PerkManager } from "@/modules/perk-manager"
+import { ReputationManager } from "@/modules/reputation-manager"
 
 const initialState: GameState = {
   currentEpisodeId: "",
@@ -24,6 +25,7 @@ const initialState: GameState = {
   history: [],
   perks: PerkManager.DEFAULT_PLAYER_PERKS,
   level: 1,
+  reputation: ReputationManager.DEFAULT_REPUTATION_DATA,
 }
 
 export function useGameState() {

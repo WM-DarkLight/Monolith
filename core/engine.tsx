@@ -10,16 +10,30 @@ import { loadSavedGame, saveGame, autoSaveGame, importSaveData, hasUnsavedChange
 import { CharacterCreation } from "@/ui/character-creation"
 import { SkillManager } from "@/modules/skill-manager"
 import { PerkManager } from "@/modules/perk-manager"
+import { getCampaign, getCampaignProgress, completeEpisode } from "@/lib/campaign-service"
+import type { Campaign, CampaignProgress } from "@/types/campaign"
+import { ReputationManager } from "@/modules/reputation-manager"
+import { EffectsManager } from "@/modules/effects-manager"
 
 interface GameEngineProps {
   onExit: () => void
   initialSaveId?: string
   initialEpisodeId?: string
+  campaignId?: string
+  onUpdateGameState?: (gameState: GameState) => void
 }
 
-export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }: GameEngineProps) {
+export function GameEngine({
+  onExit,
+  initialSaveId,
+  initialEpisodeId = "intro",
+  campaignId,
+  onUpdateGameState,
+}: GameEngineProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null)
+  const [currentCampaign, setCurrentCampaign] = useState<Campaign | null>(null)
+  const [campaignProgress, setCampaignProgress] = useState<CampaignProgress | null>(null)
   const { gameState, updateGameState, resetGameState, unlockPerk, equipArtifact, unequipArtifact, addPerkPoint } =
     useGameState()
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -58,14 +72,27 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
           const savedGame = await loadSavedGame(initialSaveId)
           if (savedGame) {
             updateGameState(savedGame.gameState)
-            const episode = await loadEpisode(savedGame.gameState.currentEpisodeId)
+            const episode = await loadEpisode(savedGame.gameState.currentEpisodeId, savedGame.gameState.currentSceneId)
             setCurrentEpisode(episode)
             setCurrentSaveData(savedGame)
             setLastSavedState(savedGame.gameState)
+
+            // If this save is part of a campaign, load the campaign data
+            if (savedGame.campaignId) {
+              const campaign = await getCampaign(savedGame.campaignId)
+              const progress = await getCampaignProgress(savedGame.campaignId)
+              if (campaign && progress) {
+                setCurrentCampaign(campaign)
+                setCampaignProgress(progress)
+              }
+            }
           } else {
             // Fallback to new game if save not found
             await loadNewEpisode(initialEpisodeId)
           }
+        } else if (campaignId) {
+          // Load from campaign
+          await loadCampaign(campaignId)
         } else {
           // Start new game with specified episode
           await loadNewEpisode(initialEpisodeId)
@@ -79,21 +106,63 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
     }
 
     initGame()
-  }, [initialSaveId, initialEpisodeId, updateGameState, resetGameState])
+  }, [initialSaveId, initialEpisodeId, campaignId, updateGameState, resetGameState])
 
-  const loadNewEpisode = async (episodeId: string) => {
+  // Load a campaign
+  const loadCampaign = async (campaignId: string) => {
     try {
-      const episode = await loadEpisode(episodeId)
+      const campaign = await getCampaign(campaignId)
+      if (!campaign) {
+        throw new Error(`Campaign with ID ${campaignId} not found`)
+      }
+
+      // Get or create campaign progress
+      const progress = await getCampaignProgress(campaignId)
+      if (!progress) {
+        throw new Error(`Campaign progress for ${campaignId} not found`)
+      }
+
+      setCurrentCampaign(campaign)
+      setCampaignProgress(progress)
+
+      // Get the current episode ID from the campaign
+      const currentEpisodeIndex = progress.currentEpisodeIndex
+      const currentEpisodeId = campaign.episodes[currentEpisodeIndex]?.id
+
+      if (!currentEpisodeId) {
+        throw new Error(`Episode at index ${currentEpisodeIndex} not found in campaign ${campaignId}`)
+      }
+
+      // Load the episode
+      await loadNewEpisode(currentEpisodeId, undefined, campaign)
+    } catch (error) {
+      console.error(`Failed to load campaign ${campaignId}:`, error)
+      throw error
+    }
+  }
+
+  // Update the loadNewEpisode function to support campaigns
+  const loadNewEpisode = async (episodeId: string, sceneId?: string, campaign?: Campaign) => {
+    try {
+      const episode = await loadEpisode(episodeId, sceneId)
       setCurrentEpisode(episode)
 
       // Check if this episode allows custom skills
-      if (episode.allowCustomSkills) {
+      const allowCustomSkills = campaign?.allowCustomSkills || episode.allowCustomSkills
+      if (allowCustomSkills && !currentCampaign?.persistentProgress) {
         setShowCharacterCreation(true)
+      } else if (campaign?.persistentProgress && campaignProgress) {
+        // If this is a persistent campaign and we have existing progress, continue with current state
+        updateGameState({
+          currentEpisodeId: episodeId,
+          currentSceneId: sceneId || episode.initialScene || null,
+        })
       } else {
         // Use default skills
         resetGameState()
         updateGameState({
           currentEpisodeId: episodeId,
+          currentSceneId: sceneId || episode.initialScene || null,
           inventory: [],
           stats: {
             health: 100,
@@ -106,7 +175,11 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
             toxinResistance: 0,
             carryWeight: 100,
           },
-          skills: SkillManager.DEFAULT_SKILLS,
+          skills: campaign?.recommendedSkills
+            ? { ...SkillManager.DEFAULT_SKILLS, ...campaign.recommendedSkills }
+            : episode.recommendedSkills
+              ? { ...SkillManager.DEFAULT_SKILLS, ...episode.recommendedSkills }
+              : SkillManager.DEFAULT_SKILLS,
           perks: PerkManager.DEFAULT_PLAYER_PERKS,
           flags: {},
           history: [],
@@ -151,7 +224,7 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
       skills,
       perks: {
         ...PerkManager.DEFAULT_PLAYER_PERKS,
-        perkPoints: 5, // Start with 5 perk points instead of 3
+        perkPoints: 5, // Start with 5 perk points
       },
       flags: {},
       history: [],
@@ -172,7 +245,7 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
     }
   }, [gameState, lastSavedState])
 
-  // Update the handleOptionSelect function to handle failure episodes
+  // Update the handleOptionSelect function to handle campaigns
   const handleOptionSelect = async (optionId: string, skillCheckSuccess?: boolean) => {
     if (!currentEpisode) return
 
@@ -264,6 +337,36 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
       }
     }
 
+    let updatedStateMutable: GameState = { ...updatedState }
+
+    // Apply reputation changes if not a failed skill check
+    if (!skillCheckFailed && selectedOption.modifyReputation) {
+      Object.entries(selectedOption.modifyReputation).forEach(([factionId, change]) => {
+        updatedStateMutable = ReputationManager.changeReputation(
+          updatedStateMutable,
+          factionId,
+          change.value,
+          change.reason,
+        )
+      })
+
+      // Update general alignment after reputation changes
+      updatedStateMutable = ReputationManager.updateGeneralAlignment(updatedStateMutable)
+    } else if (skillCheckFailed && selectedOption.failureReputation) {
+      // Apply failure-specific reputation changes if provided
+      Object.entries(selectedOption.failureReputation).forEach(([factionId, change]) => {
+        updatedStateMutable = ReputationManager.changeReputation(
+          updatedStateMutable,
+          factionId,
+          change.value,
+          change.reason,
+        )
+      })
+
+      // Update general alignment after reputation changes
+      updatedStateMutable = ReputationManager.updateGeneralAlignment(updatedStateMutable)
+    }
+
     // Apply inventory changes if not a failed skill check
     if (!skillCheckFailed) {
       if (selectedOption.addItems) {
@@ -276,8 +379,8 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
     }
 
     // Add perk point on significant progress (e.g., completing a major challenge)
-    if (!skillCheckFailed && selectedOption.nextEpisode && Math.random() < 0.3) {
-      // 30% chance to get a perk point when progressing to a new episode
+    if (!skillCheckFailed && (selectedOption.nextEpisode || selectedOption.scene) && Math.random() < 0.3) {
+      // 30% chance to get a perk point when progressing to a new episode or scene
       const updatedPerks = {
         ...updatedState.perks,
         perkPoints: (updatedState.perks?.perkPoints || 0) + 1,
@@ -299,13 +402,15 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
       }, 5000)
     }
 
-    updateGameState(updatedState)
+    updateGameState(updatedStateMutable)
 
     // Add this to the handleOptionSelect function, after updating the game state
     // This will make the save icon pulse when the player makes significant choices
     if (
       selectedOption.nextEpisode ||
+      selectedOption.scene ||
       selectedOption.failureEpisode ||
+      selectedOption.failureScene ||
       (selectedOption.modifyStats &&
         (Math.abs(selectedOption.modifyStats.health || 0) > 20 ||
           Math.abs(selectedOption.modifyStats.energy || 0) > 20)) ||
@@ -316,27 +421,59 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
       setTimeout(() => setShouldPulseSaveIcon(false), 10000)
     }
 
-    // Determine which episode to load next
+    // Determine which episode/scene to load next
     let nextEpisodeId = null
-    if (!skillCheckFailed && selectedOption.nextEpisode) {
-      nextEpisodeId = selectedOption.nextEpisode
-    } else if (skillCheckFailed && selectedOption.failureEpisode) {
-      nextEpisodeId = selectedOption.failureEpisode
+    let nextSceneId = null
+
+    if (!skillCheckFailed) {
+      // Check if we're navigating to a new scene in the same episode
+      if (selectedOption.scene && currentEpisode.scenes && currentEpisode.scenes[selectedOption.scene]) {
+        nextEpisodeId = gameState.currentEpisodeId
+        nextSceneId = selectedOption.scene
+      }
+      // Otherwise, check if we're navigating to a new episode
+      else if (selectedOption.nextEpisode) {
+        nextEpisodeId = selectedOption.nextEpisode
+        nextSceneId = null // Reset scene when changing episodes
+      }
+    } else {
+      // Handle failure navigation
+      if (selectedOption.failureScene && currentEpisode.scenes && currentEpisode.scenes[selectedOption.failureScene]) {
+        nextEpisodeId = gameState.currentEpisodeId
+        nextSceneId = selectedOption.failureScene
+      } else if (selectedOption.failureEpisode) {
+        nextEpisodeId = selectedOption.failureEpisode
+        nextSceneId = null // Reset scene when changing episodes
+      }
     }
 
-    // Load the next episode if specified
+    // Update effects based on scene/episode change
+    if (nextEpisodeId) {
+      updatedStateMutable = EffectsManager.updateEffectsOnSceneChange(updatedStateMutable, nextEpisodeId, nextSceneId)
+      updatedStateMutable = EffectsManager.checkTimedEffects(updatedStateMutable)
+    }
+
+    // Load the next episode/scene if specified
     if (nextEpisodeId) {
       setIsLoading(true)
       try {
-        const nextEpisode = await loadEpisode(nextEpisodeId)
+        // If we're in a campaign and changing episodes, update campaign progress
+        if (currentCampaign && campaignProgress && nextEpisodeId !== gameState.currentEpisodeId) {
+          // Mark the current episode as completed
+          const updatedProgress = await completeEpisode(currentCampaign.id, gameState.currentEpisodeId)
+          setCampaignProgress(updatedProgress)
+        }
+
+        const nextEpisode = await loadEpisode(nextEpisodeId, nextSceneId)
         setCurrentEpisode(nextEpisode)
         const finalState = {
           ...updatedState,
           currentEpisodeId: nextEpisodeId,
+          currentSceneId: nextSceneId,
         }
         updateGameState(finalState)
 
-        // Auto-save when changing episodes
+        // Auto-save when changing episodes/scenes
         handleAutoSave(finalState)
       } catch (error) {
         console.error(`Failed to load episode: ${nextEpisodeId}`, error)
@@ -367,6 +504,8 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
         episodeTitle: currentEpisode.title,
         gameState,
         stats: gameState.stats,
+        campaignId: currentCampaign?.id,
+        campaignEpisodeIndex: campaignProgress?.currentEpisodeIndex,
       })
 
       // Update current save data reference
@@ -382,6 +521,8 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
         version: "1.0.0",
         thumbnail: "",
         compressed: false,
+        campaignId: currentCampaign?.id,
+        campaignEpisodeIndex: campaignProgress?.currentEpisodeIndex,
       }
 
       setCurrentSaveData(newSaveData)
@@ -412,6 +553,8 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
         episodeTitle: currentEpisode.title,
         gameState: stateToSave,
         stats: stateToSave.stats,
+        campaignId: currentCampaign?.id,
+        campaignEpisodeIndex: campaignProgress?.currentEpisodeIndex,
       })
 
       setLastAutoSaveTime(Date.now())
@@ -438,6 +581,16 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
             setCurrentSaveData(savedGame)
             setLastSavedState(savedGame.gameState)
             setHasUnsavedProgress(false)
+
+            // If this save is part of a campaign, load the campaign data
+            if (savedGame.campaignId) {
+              const campaign = await getCampaign(savedGame.campaignId)
+              const progress = await getCampaignProgress(savedGame.campaignId)
+              if (campaign && progress) {
+                setCurrentCampaign(campaign)
+                setCampaignProgress(progress)
+              }
+            }
           }
         } catch (error) {
           console.error("Import failed:", error)
@@ -449,6 +602,10 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
       console.error("File reading failed:", error)
       setSaveError("Failed to read the save file.")
     }
+  }
+
+  const handleUpdateGameState = (updatedState: GameState) => {
+    updateGameState(updatedState)
   }
 
   if (isLoading) {
@@ -480,10 +637,13 @@ export function GameEngine({ onExit, initialSaveId, initialEpisodeId = "intro" }
         onUnlockPerk={unlockPerk}
         onEquipArtifact={equipArtifact}
         onUnequipArtifact={unequipArtifact}
+        onUpdateGameState={handleUpdateGameState}
         currentSaveData={currentSaveData}
         saveError={saveError}
         shouldPulseSaveIcon={shouldPulseSaveIcon}
         onExit={handleExitWithConfirmation}
+        campaign={currentCampaign}
+        campaignProgress={campaignProgress}
       />
     </div>
   )

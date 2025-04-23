@@ -3,17 +3,20 @@ import { useState } from "react"
 import type { Option } from "@/types/episode"
 import type { GameState, SkillCheckResult } from "@/types/game"
 import { checkOptionCondition, performSkillCheck } from "@/lib/condition-checker"
-import { ChevronRight, Dices } from "lucide-react"
+import { ChevronRight, Dices, MessageCircle } from "lucide-react"
 import { SkillCheckResultDisplay } from "@/ui/skill-check-result"
 import { SkillManager } from "@/modules/skill-manager"
+import type { NPC } from "@/types/dialogue"
 
 interface OptionsPanelProps {
   options: Option[]
   onSelect: (optionId: string, success?: boolean) => void
   gameState: GameState
+  npcs?: NPC[] // Add NPCs prop
+  onStartDialogue?: (npcId: string) => void // Add callback for starting dialogue
 }
 
-export function OptionsPanel({ options, onSelect, gameState }: OptionsPanelProps) {
+export function OptionsPanel({ options, onSelect, gameState, npcs, onStartDialogue }: OptionsPanelProps) {
   const [skillCheckResult, setSkillCheckResult] = useState<SkillCheckResult | null>(null)
   const [pendingOptionId, setPendingOptionId] = useState<string | null>(null)
 
@@ -139,6 +142,29 @@ export function OptionsPanel({ options, onSelect, gameState }: OptionsPanelProps
             </button>
           )
         })}
+
+        {/* Add NPC dialogue options if available */}
+        {npcs && npcs.length > 0 && (
+          <>
+            <div className="border-t border-gold/20 my-4 pt-4">
+              <h4 className="terminal-header text-center mb-3">TALK TO SOMEONE</h4>
+            </div>
+
+            {npcs.map((npc) => (
+              <button
+                key={npc.id}
+                className="wasteland-card p-3 text-left hover:border-gold transition-all duration-300 group"
+                onClick={() => onStartDialogue && onStartDialogue(npc.id)}
+              >
+                <div className="flex items-center">
+                  <MessageCircle className="w-4 h-4 text-gold mr-2" />
+                  <span className="flex-grow terminal-text">Talk to {npc.name}</span>
+                  <ChevronRight className="w-5 h-5 text-gold/50 group-hover:text-gold transition-colors ml-2 opacity-0 group-hover:opacity-100" />
+                </div>
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       {skillCheckResult && <SkillCheckResultDisplay result={skillCheckResult} onClose={handleSkillCheckClose} />}

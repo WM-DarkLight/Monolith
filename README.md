@@ -1,7 +1,6 @@
 # Monolith Adventure Engine
 
-![Screenshot 2025-04-21 225715](https://github.com/user-attachments/assets/215e1d40-df2f-4ae8-8550-7943b685b092)
-
+![Monolith Adventure Engine](https://placeholder.svg?height=200&width=600&text=Monolith+Adventure+Engine)
 
 ## Overview
 
@@ -20,21 +19,6 @@ Set in a post-apocalyptic wasteland, the engine comes with a retro-futuristic UI
 - **Skill Checks**: Challenge-based gameplay with probability of success based on character skills
 - **Journal System**: Automatic tracking of player choices and story progression
 - **Responsive Design**: Works on desktop and mobile devices
-
-![Screenshot 2025-04-21 225715](https://github.com/user-attachments/assets/215e1d40-df2f-4ae8-8550-7943b685b092)
-
-![Screenshot 2025-04-21 225732](https://github.com/user-attachments/assets/1d53f8ec-b302-432a-a4f8-c3e44474f5e0)
-
-![Screenshot 2025-04-21 225759](https://github.com/user-attachments/assets/e5e121ca-885d-4f35-9557-2a4595b42c15)
-
-![Screenshot 2025-04-21 223022](https://github.com/user-attachments/assets/96507a5c-8e55-47d3-a630-1ce321c8b282)
-
-![Screenshot 2025-04-21 225834](https://github.com/user-attachments/assets/4c272712-6892-43aa-9fbd-576fd24dfc16)
-
-![Screenshot 2025-04-21 225803](https://github.com/user-attachments/assets/38bba22f-78eb-4e67-93e3-0c3d4e80e16b)
-
-![Screenshot 2025-04-21 225810](https://github.com/user-attachments/assets/6bce0652-23da-44cc-851a-1c94586a8d3e)
-
 
 ## Getting Started
 

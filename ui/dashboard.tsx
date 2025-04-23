@@ -3,21 +3,28 @@
 import { useState, useEffect, useMemo } from "react"
 import { EpisodeLibrary } from "@/ui/episode-library"
 import { SavedGames } from "@/ui/saved-games"
+import { CampaignLibrary } from "@/ui/campaign-library"
 import { getEpisodeList } from "@/lib/episode-service"
 import { getSavedGames } from "@/lib/save-manager"
+import { getCampaignList, getAllCampaignProgress } from "@/lib/campaign-service"
 import type { EpisodeSummary } from "@/types/episode"
 import type { SavedGame } from "@/types/save"
+import type { Campaign, CampaignProgress } from "@/types/campaign"
 import { DashboardSidebar } from "@/ui/dashboard-sidebar"
 import { DashboardHeader } from "@/ui/dashboard-header"
 import { Search, Filter, SortDesc, SortAsc } from "lucide-react"
+import { resetEpisodeDatabase } from "@/lib/db-reset"
 
 interface DashboardProps {
   onStartGame: (saveId?: string, episodeId?: string) => void
+  onStartCampaign: (campaignId: string) => void
 }
 
-export function Dashboard({ onStartGame }: DashboardProps) {
-  const [activeTab, setActiveTab] = useState<"episodes" | "saves">("episodes")
+export function Dashboard({ onStartGame, onStartCampaign }: DashboardProps) {
+  const [activeTab, setActiveTab] = useState<"episodes" | "campaigns" | "saves">("campaigns")
   const [episodes, setEpisodes] = useState<EpisodeSummary[]>([])
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [campaignProgress, setCampaignProgress] = useState<Record<string, CampaignProgress>>({})
   const [savedGames, setSavedGames] = useState<SavedGame[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -30,6 +37,16 @@ export function Dashboard({ onStartGame }: DashboardProps) {
       try {
         const episodeList = await getEpisodeList()
         setEpisodes(episodeList)
+
+        const campaignList = await getCampaignList()
+        setCampaigns(campaignList)
+
+        const progress = await getAllCampaignProgress()
+        const progressMap: Record<string, CampaignProgress> = {}
+        progress.forEach((p) => {
+          progressMap[p.campaignId] = p
+        })
+        setCampaignProgress(progressMap)
 
         const saves = await getSavedGames()
         setSavedGames(saves)
@@ -76,6 +93,30 @@ export function Dashboard({ onStartGame }: DashboardProps) {
     return result
   }, [episodes, searchQuery, filterStatus, sortOrder])
 
+  const filteredCampaigns = useMemo(() => {
+    let result = [...campaigns]
+
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      result = result.filter(
+        (campaign) =>
+          campaign.title.toLowerCase().includes(query) || campaign.description.toLowerCase().includes(query),
+      )
+    }
+
+    // Apply sorting
+    result.sort((a, b) => {
+      if (sortOrder === "asc") {
+        return a.title.localeCompare(b.title)
+      } else {
+        return b.title.localeCompare(a.title)
+      }
+    })
+
+    return result
+  }, [campaigns, searchQuery, sortOrder])
+
   const filteredSaves = useMemo(() => {
     let result = [...savedGames]
 
@@ -103,6 +144,25 @@ export function Dashboard({ onStartGame }: DashboardProps) {
     setSavedGames(savedGames.filter((save) => save.id !== id))
   }
 
+  const handleResetEpisodes = async () => {
+    if (
+      confirm(
+        "This will reset the episodes database to include any new episodes. Your save games will not be affected. Continue?",
+      )
+    ) {
+      setIsLoading(true)
+      try {
+        await resetEpisodeDatabase()
+        const episodeList = await getEpisodeList()
+        setEpisodes(episodeList)
+      } catch (error) {
+        console.error("Failed to reset episodes:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+  }
+
   return (
     <div className="wasteland-background">
       <div className="scan-line"></div>
@@ -113,14 +173,31 @@ export function Dashboard({ onStartGame }: DashboardProps) {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           episodeCount={episodes.length}
+          campaignCount={campaigns.length}
           saveCount={savedGames.length}
         />
 
         <main className="dashboard-main p-6">
           <div className="mb-6 flex items-center justify-between">
-            <h2 className="terminal-header text-2xl">{activeTab === "episodes" ? "EPISODE LIBRARY" : "SAVED GAMES"}</h2>
+            <h2 className="terminal-header text-2xl">
+              {activeTab === "episodes"
+                ? "EPISODE LIBRARY"
+                : activeTab === "campaigns"
+                  ? "CAMPAIGN LIBRARY"
+                  : "SAVED GAMES"}
+            </h2>
 
             <div className="flex items-center gap-4">
+              {activeTab === "episodes" && (
+                <button
+                  onClick={handleResetEpisodes}
+                  className="wasteland-button bg-dark-gray text-xs"
+                  title="Reset Episodes Database"
+                >
+                  REFRESH EPISODES
+                </button>
+              )}
+
               <div className="relative">
                 <input
                   type="text"
@@ -178,6 +255,13 @@ export function Dashboard({ onStartGame }: DashboardProps) {
           ) : (
             <div>
               {activeTab === "episodes" && <EpisodeLibrary episodes={filteredEpisodes} onSelectEpisode={onStartGame} />}
+              {activeTab === "campaigns" && (
+                <CampaignLibrary
+                  campaigns={filteredCampaigns}
+                  campaignProgress={campaignProgress}
+                  onSelectCampaign={onStartCampaign}
+                />
+              )}
               {activeTab === "saves" && (
                 <SavedGames saves={filteredSaves} onLoadSave={onStartGame} onDeleteSave={handleDeleteSave} />
               )}

@@ -1,15 +1,22 @@
 "use client"
 
-import { Book, Save, Info, LogOut, Map, Radio, Shield, Zap } from "lucide-react"
+import { Book, Save, Info, LogOut, Map, Radio, Shield, Zap, BookOpen } from "lucide-react"
 
 interface DashboardSidebarProps {
   activeTab: string
-  setActiveTab: (tab: "episodes" | "saves") => void
+  setActiveTab: (tab: "episodes" | "campaigns" | "saves") => void
   episodeCount: number
+  campaignCount: number
   saveCount: number
 }
 
-export function DashboardSidebar({ activeTab, setActiveTab, episodeCount, saveCount }: DashboardSidebarProps) {
+export function DashboardSidebar({
+  activeTab,
+  setActiveTab,
+  episodeCount,
+  campaignCount,
+  saveCount,
+}: DashboardSidebarProps) {
   return (
     <aside className="dashboard-sidebar border-r border-gold-dark bg-darker-gray">
       <div className="p-4">
@@ -20,6 +27,22 @@ export function DashboardSidebar({ activeTab, setActiveTab, episodeCount, saveCo
           </h2>
           <nav>
             <ul className="space-y-1">
+              <li>
+                <button
+                  className={`flex items-center w-full px-3 py-2 ${
+                    activeTab === "campaigns"
+                      ? "bg-gold/20 text-gold border-l-2 border-gold"
+                      : "text-white/70 hover:bg-dark-gray hover:text-white border-l-2 border-transparent"
+                  } transition-colors`}
+                  onClick={() => setActiveTab("campaigns")}
+                >
+                  <BookOpen className="w-5 h-5 mr-3" />
+                  <span>Campaigns</span>
+                  <span className="ml-auto bg-dark-gray text-gold text-xs px-2 py-0.5 border border-gold/30">
+                    {campaignCount}
+                  </span>
+                </button>
+              </li>
               <li>
                 <button
                   className={`flex items-center w-full px-3 py-2 ${

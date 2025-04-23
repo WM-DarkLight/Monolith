@@ -2,16 +2,22 @@
 import { useState } from "react"
 import type { Episode } from "@/types/episode"
 import type { GameState } from "@/types/game"
+import type { Campaign, CampaignProgress } from "@/types/campaign"
 import { OptionsPanel } from "@/ui/options-panel"
 import { StatsDisplay } from "@/ui/stats-display"
 import { InventoryDisplay } from "@/ui/inventory-display"
 import { SkillsDisplay } from "@/ui/skills-display"
 import { PerksDisplay } from "@/ui/perks-display"
+import { ReputationDisplay } from "@/ui/reputation-display"
 import { PerkSelectionScreen } from "@/ui/perk-selection-screen"
 import { TextDisplay } from "@/ui/text-display"
 import { SaveGameModal } from "@/ui/save-game-modal"
 import { deleteSavedGame } from "@/lib/save-manager"
-import { Save, Map, Book, Clock, Radio, Shield, ChevronLeft, Award } from "lucide-react"
+import { Save, Map, Book, Clock, Radio, Shield, ChevronLeft, Award, BookOpen, Users, Skull } from "lucide-react"
+import { ReputationManager } from "@/modules/reputation-manager"
+import { DialoguePanel } from "@/ui/dialogue-panel"
+import { DialogueManager } from "@/modules/dialogue-manager"
+import type { NPC } from "@/types/dialogue"
 
 interface GameUIProps {
   episode: Episode | null
@@ -26,6 +32,9 @@ interface GameUIProps {
   saveError: string | null
   shouldPulseSaveIcon?: boolean
   onExit: () => void
+  campaign?: Campaign | null
+  campaignProgress?: CampaignProgress | null
+  onUpdateGameState: (gameState: GameState) => void
 }
 
 export function GameUI(props: GameUIProps) {
@@ -42,6 +51,9 @@ export function GameUI(props: GameUIProps) {
     saveError,
     shouldPulseSaveIcon,
     onExit,
+    campaign,
+    campaignProgress,
+    onUpdateGameState,
   } = props
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle")
@@ -53,6 +65,7 @@ export function GameUI(props: GameUIProps) {
   const [showMap, setShowMap] = useState(false)
   const [showSkills, setShowSkills] = useState(true)
   const [showPerks, setShowPerks] = useState(false)
+  const [showReputation, setShowReputation] = useState(false)
   const [showPerkSelection, setShowPerkSelection] = useState(false)
 
   if (!episode) {
@@ -91,19 +104,54 @@ export function GameUI(props: GameUIProps) {
     }
   }
 
+  // Calculate campaign progress if available
+  const campaignInfo =
+    campaign && campaignProgress
+      ? {
+          currentEpisodeIndex: campaignProgress.currentEpisodeIndex,
+          totalEpisodes: campaign.episodes.length,
+          completedEpisodes: campaignProgress.completedEpisodes.length,
+          progress: Math.round((campaignProgress.completedEpisodes.length / campaign.episodes.length) * 100),
+          currentEpisodeTitle: episode.title,
+          campaignTitle: campaign.title,
+        }
+      : null
+
   return (
     <div className="wasteland-background min-h-screen">
       <div className="scan-line"></div>
       <div className="p-4 md:p-6">
         <div className="flex justify-between items-center mb-6">
-          <h1
-            className="terminal-header text-3xl group cursor-pointer flex items-center"
-            onClick={onExit}
-            title="Return to Dashboard"
-          >
-            <ChevronLeft className="w-5 h-5 mr-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-            {episode.title}
-          </h1>
+          <div>
+            <h1
+              className="terminal-header text-3xl group cursor-pointer flex items-center"
+              onClick={onExit}
+              title="Return to Dashboard"
+            >
+              <ChevronLeft className="w-5 h-5 mr-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+              {episode.title}
+              {gameState.currentSceneId &&
+                episode.scenes &&
+                episode.scenes[gameState.currentSceneId] &&
+                episode.scenes[gameState.currentSceneId].title !== episode.title && (
+                  <span className="ml-2 text-xl text-gold-light">
+                    - {episode.scenes[gameState.currentSceneId].title}
+                  </span>
+                )}
+            </h1>
+            {campaignInfo && (
+              <div className="flex items-center mt-1 text-sm text-white/60">
+                <BookOpen className="w-3 h-3 mr-1 text-gold" />
+                <span className="text-gold">{campaignInfo.campaignTitle}</span>
+                <span className="mx-2">•</span>
+                <span>
+                  Episode {campaignInfo.currentEpisodeIndex + 1} of {campaignInfo.totalEpisodes}
+                </span>
+                <span className="mx-2">•</span>
+                <span>{campaignInfo.progress}% complete</span>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <button
@@ -132,6 +180,19 @@ export function GameUI(props: GameUIProps) {
               {(gameState.perks?.perkPoints || 0) > 0 && (
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-gold rounded-full"></span>
               )}
+            </button>
+            <button
+              className="p-2 border border-gold-dark hover:bg-dark-gray text-white/70 hover:text-gold transition-colors z-10 relative"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowReputation(!showReputation)
+              }}
+              title="Reputation"
+              type="button"
+              style={{ pointerEvents: "auto" }}
+            >
+              <Users className="w-5 h-5" />
             </button>
             <button
               className={`p-2 border border-gold-dark hover:bg-dark-gray text-white/70 hover:text-gold transition-colors relative group ${
@@ -169,12 +230,51 @@ export function GameUI(props: GameUIProps) {
                   onEquipArtifact={onEquipArtifact}
                   onUnequipArtifact={onUnequipArtifact}
                 />
+              ) : showReputation && gameState.reputation ? (
+                <ReputationDisplay reputation={gameState.reputation} />
               ) : (
                 <>
                   <TextDisplay text={episode.text} />
 
+                  {gameState.dialogueState?.isActive && episode?.npcs && gameState.dialogueState.currentNpcId && (
+                    <DialoguePanel
+                      npc={episode.npcs[gameState.dialogueState.currentNpcId]}
+                      gameState={gameState}
+                      onSelectResponse={(responseId) => {
+                        const npc = episode.npcs?.[gameState.dialogueState?.currentNpcId || ""]
+                        if (npc) {
+                          const updatedState = DialogueManager.selectDialogueResponse(gameState, npc, responseId)
+                          onUpdateGameState(updatedState)
+                        }
+                      }}
+                      onEndDialogue={() => {
+                        const updatedState = DialogueManager.endDialogue(gameState)
+                        onUpdateGameState(updatedState)
+                      }}
+                    />
+                  )}
+
                   <div className="mt-8">
-                    <OptionsPanel options={episode.options} onSelect={onOptionSelect} gameState={gameState} />
+                    {!gameState.dialogueState?.isActive && episode && (
+                      <OptionsPanel
+                        options={episode.options}
+                        onSelect={onOptionSelect}
+                        gameState={gameState}
+                        npcs={
+                          episode.currentSceneId && episode.scenes?.[episode.currentSceneId]?.availableNpcs
+                            ? (episode.scenes[episode.currentSceneId].availableNpcs
+                                .map((id) => episode.npcs?.[id])
+                                .filter(Boolean) as NPC[])
+                            : []
+                        }
+                        onStartDialogue={(npcId) => {
+                          if (episode.npcs?.[npcId]) {
+                            const updatedState = DialogueManager.startDialogue(gameState, episode.npcs[npcId])
+                            onUpdateGameState(updatedState)
+                          }
+                        }}
+                      />
+                    )}
                   </div>
                 </>
               )}
@@ -182,6 +282,36 @@ export function GameUI(props: GameUIProps) {
           </div>
 
           <div className="md:col-span-1 space-y-6">
+            {campaignInfo && (
+              <div className="wasteland-container p-4">
+                <h3 className="terminal-header text-lg mb-3">CAMPAIGN PROGRESS</h3>
+                <div className="mb-3">
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-white/70">Progress</span>
+                    <span className="text-gold">{campaignInfo.progress}%</span>
+                  </div>
+                  <div className="progress-bar">
+                    <div
+                      className="progress-bar-fill progress-bar-energy"
+                      style={{ width: `${campaignInfo.progress}%` }}
+                    ></div>
+                  </div>
+                </div>
+                <div className="text-xs text-white/70">
+                  <div className="flex justify-between mb-1">
+                    <span>Current Episode:</span>
+                    <span className="text-gold">
+                      {campaignInfo.currentEpisodeIndex + 1}/{campaignInfo.totalEpisodes}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Episodes Completed:</span>
+                    <span className="text-gold">{campaignInfo.completedEpisodes}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="wasteland-container p-4">
               <StatsDisplay stats={gameState.stats} />
             </div>
@@ -189,6 +319,49 @@ export function GameUI(props: GameUIProps) {
             <div className="wasteland-container p-4">
               <SkillsDisplay skills={gameState.skills} />
             </div>
+
+            {gameState.reputation && (
+              <div className="wasteland-container p-4">
+                <h3 className="terminal-header text-lg mb-3 flex items-center justify-between">
+                  <span>REPUTATION</span>
+                  <button
+                    className="text-xs text-gold/70 hover:text-gold"
+                    onClick={() => setShowReputation(!showReputation)}
+                    type="button"
+                  >
+                    {showReputation ? "HIDE" : "DETAILS"}
+                  </button>
+                </h3>
+                <div className="flex items-center mb-2">
+                  {gameState.reputation.generalAlignment === "lawful" ? (
+                    <Shield className="w-4 h-4 mr-1.5 text-gold" />
+                  ) : gameState.reputation.generalAlignment === "chaotic" ? (
+                    <Skull className="w-4 h-4 mr-1.5 text-rust" />
+                  ) : (
+                    <Shield className="w-4 h-4 mr-1.5 text-white/70" />
+                  )}
+                  <span className="text-sm">ALIGNMENT: {gameState.reputation.generalAlignment.toUpperCase()}</span>
+                </div>
+                <div className="text-xs text-white/70 mb-2">
+                  {Object.values(gameState.reputation.factions)
+                    .filter((f) => !f.hidden)
+                    .slice(0, 3)
+                    .map((faction) => (
+                      <div key={faction.id} className="flex justify-between items-center mb-1">
+                        <span>{faction.name}:</span>
+                        <span className={ReputationManager.getReputationColor(faction.level)}>
+                          {faction.level.charAt(0).toUpperCase() + faction.level.slice(1)}
+                        </span>
+                      </div>
+                    ))}
+                  {Object.values(gameState.reputation.factions).filter((f) => !f.hidden).length > 3 && (
+                    <div className="text-center text-xs text-gold/50 mt-1">
+                      + {Object.values(gameState.reputation.factions).filter((f) => !f.hidden).length - 3} more
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="wasteland-container p-4">
               <InventoryDisplay inventory={gameState.inventory} />
