@@ -5,7 +5,7 @@ import { Dashboard } from "@/ui/dashboard"
 import { GameEngine } from "@/core/engine"
 import { initializeDatabase } from "@/lib/db"
 import { getEpisodeList } from "@/lib/episode-service"
-import { getCampaign, startCampaign, getCampaignProgress } from "@/lib/campaign-service"
+import { getCampaign, startCampaign, getCampaignProgress, startCampaignEpisode } from "@/lib/campaign-service"
 
 export default function Home() {
   const [isPlaying, setIsPlaying] = useState(false)
@@ -76,6 +76,24 @@ export default function Home() {
     }
   }
 
+  const handleStartCampaignEpisode = async (campaignId: string, episodeId: string) => {
+    setIsLoading(true)
+    try {
+      // Update campaign progress to the selected episode
+      await startCampaignEpisode(campaignId, episodeId)
+
+      // Start the game with the selected episode
+      setCurrentCampaignId(campaignId)
+      setCurrentEpisodeId(episodeId)
+      setCurrentSaveId(undefined)
+      setIsPlaying(true)
+    } catch (error) {
+      console.error(`Failed to start episode ${episodeId} in campaign ${campaignId}:`, error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-black">
@@ -94,7 +112,11 @@ export default function Home() {
           campaignId={currentCampaignId}
         />
       ) : (
-        <Dashboard onStartGame={handleStartGame} onStartCampaign={handleStartCampaign} />
+        <Dashboard
+          onStartGame={handleStartGame}
+          onStartCampaign={handleStartCampaign}
+          onStartCampaignEpisode={handleStartCampaignEpisode}
+        />
       )}
     </main>
   )

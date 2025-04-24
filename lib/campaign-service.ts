@@ -62,18 +62,92 @@ export async function startCampaign(campaignId: string): Promise<CampaignProgres
       throw new Error(`Campaign with ID ${campaignId} not found`)
     }
 
+    // Check if there's existing progress to preserve the everCompleted flag
+    const existingProgress = await getCampaignProgress(campaignId)
+    const everCompleted = existingProgress?.everCompleted || false
+
     const progress: CampaignProgress = {
       campaignId,
       currentEpisodeIndex: 0,
       completedEpisodes: [],
       startedAt: new Date().toISOString(),
       lastPlayedAt: new Date().toISOString(),
+      everCompleted, // Preserve the everCompleted flag
     }
 
     await updateCampaignProgress(progress)
     return progress
   } catch (error) {
     console.error(`Failed to start campaign ${campaignId}:`, error)
+    throw error
+  }
+}
+
+// Replay a campaign (reset progress but keep the original start date and everCompleted flag)
+export async function replayCampaign(campaignId: string): Promise<CampaignProgress> {
+  try {
+    const existingProgress = await getCampaignProgress(campaignId)
+    if (!existingProgress) {
+      // If no existing progress, just start a new campaign
+      return startCampaign(campaignId)
+    }
+
+    // Create updated progress with reset values but keep original start date and everCompleted flag
+    const updatedProgress: CampaignProgress = {
+      ...existingProgress,
+      currentEpisodeIndex: 0,
+      completedEpisodes: [], // Reset completed episodes
+      lastPlayedAt: new Date().toISOString(),
+      // Keep the everCompleted flag if it exists
+      everCompleted: existingProgress.everCompleted,
+    }
+
+    await updateCampaignProgress(updatedProgress)
+    return updatedProgress
+  } catch (error) {
+    console.error(`Failed to replay campaign ${campaignId}:`, error)
+    throw error
+  }
+}
+
+// Start a specific episode in a campaign
+export async function startCampaignEpisode(campaignId: string, episodeId: string): Promise<CampaignProgress> {
+  try {
+    const campaign = await getCampaign(campaignId)
+    if (!campaign) {
+      throw new Error(`Campaign with ID ${campaignId} not found`)
+    }
+
+    // Find the episode index
+    const episodeIndex = campaign.episodes.findIndex((episode) => episode.id === episodeId)
+    if (episodeIndex === -1) {
+      throw new Error(`Episode with ID ${episodeId} not found in campaign ${campaignId}`)
+    }
+
+    // Get existing progress or create new
+    let progress = await getCampaignProgress(campaignId)
+    if (!progress) {
+      progress = {
+        campaignId,
+        currentEpisodeIndex: episodeIndex,
+        completedEpisodes: [],
+        startedAt: new Date().toISOString(),
+        lastPlayedAt: new Date().toISOString(),
+        everCompleted: false,
+      }
+    } else {
+      // Update the current episode index
+      progress = {
+        ...progress,
+        currentEpisodeIndex: episodeIndex,
+        lastPlayedAt: new Date().toISOString(),
+      }
+    }
+
+    await updateCampaignProgress(progress)
+    return progress
+  } catch (error) {
+    console.error(`Failed to start episode ${episodeId} in campaign ${campaignId}:`, error)
     throw error
   }
 }
@@ -99,6 +173,15 @@ export async function completeEpisode(campaignId: string, episodeId: string): Pr
     // If there's a next episode, advance to it
     if (currentIndex >= 0 && currentIndex < campaign.episodes.length - 1) {
       progress.currentEpisodeIndex = currentIndex + 1
+    }
+
+    // Check if all episodes are completed
+    const allEpisodes = campaign.episodes.map((episode) => episode.id)
+    const allCompleted = allEpisodes.every((id) => progress.completedEpisodes.includes(id))
+
+    // If all episodes are completed, set the everCompleted flag
+    if (allCompleted) {
+      progress.everCompleted = true
     }
 
     progress.lastPlayedAt = new Date().toISOString()

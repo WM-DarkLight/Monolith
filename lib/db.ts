@@ -2,6 +2,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from "idb"
 import type { SavedGame } from "@/types/save"
 import type { EpisodeSummary } from "@/types/episode"
 import type { CampaignProgress } from "@/types/campaign"
+import type { Folder } from "@/types/folder"
 
 interface MonolithDB extends DBSchema {
   saves: {
@@ -17,6 +18,10 @@ interface MonolithDB extends DBSchema {
     key: string
     value: CampaignProgress
   }
+  folders: {
+    key: string
+    value: Folder
+  }
 }
 
 let db: IDBPDatabase<MonolithDB> | null = null
@@ -24,7 +29,7 @@ let db: IDBPDatabase<MonolithDB> | null = null
 export async function initializeDatabase(): Promise<IDBPDatabase<MonolithDB>> {
   if (db) return db
 
-  db = await openDB<MonolithDB>("monolith-db", 2, {
+  db = await openDB<MonolithDB>("monolith-db", 3, {
     upgrade(database, oldVersion, newVersion) {
       // Create saves store if it doesn't exist
       if (!database.objectStoreNames.contains("saves")) {
@@ -45,6 +50,13 @@ export async function initializeDatabase(): Promise<IDBPDatabase<MonolithDB>> {
       if (oldVersion < 2 && !database.objectStoreNames.contains("campaignProgress")) {
         database.createObjectStore("campaignProgress", {
           keyPath: "campaignId",
+        })
+      }
+
+      // Create folders store if it doesn't exist (new in version 3)
+      if (oldVersion < 3 && !database.objectStoreNames.contains("folders")) {
+        database.createObjectStore("folders", {
+          keyPath: "id",
         })
       }
     },
