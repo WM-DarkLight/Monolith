@@ -598,7 +598,7 @@ const guardEncounter: Episode = {
           setFlags: {
             spared_guard: true,
           },
-          nextEpisode: "wasteland_path",
+          scene: "journey_continues", // Navigate to a new final scene
         },
         {
           id: "finish",
@@ -606,7 +606,7 @@ const guardEncounter: Episode = {
           setFlags: {
             killed_guard: true,
           },
-          nextEpisode: "wasteland_path",
+          scene: "dark_path", // Navigate to a new final scene
         },
         {
           id: "rob",
@@ -623,7 +623,7 @@ const guardEncounter: Episode = {
               quantity: 1,
             },
           ],
-          nextEpisode: "wasteland_path",
+          scene: "journey_continues", // Navigate to a new final scene
         },
       ],
     },
@@ -650,6 +650,41 @@ const guardEncounter: Episode = {
           nextEpisode: "wasteland_jail",
         },
       ],
+    },
+    journey_continues: {
+      id: "journey_continues",
+      title: "The Journey Continues",
+      text: `You leave the guard post behind and continue on your journey. The path ahead stretches into the distance, winding through the wasteland. What other challenges and opportunities await you?
+
+Your encounter with the guard has shaped your reputation in this region. Word will spread of your actions, for better or worse.
+
+THE END`,
+      options: [
+        {
+          id: "continue",
+          text: "Continue your adventure",
+          nextEpisode: "wasteland_crossroads",
+        },
+      ],
+      isFinal: true, // Mark this as a final scene
+    },
+
+    dark_path: {
+      id: "dark_path",
+      title: "A Dark Path",
+      text: `You finish off the guard and continue on your way, leaving the body behind. The weight of your decision hangs over you as you walk the wasteland path.
+
+Your actions today have darkened your reputation in this region. Travelers will speak of the merciless wanderer who kills those who stand in their way.
+
+THE END`,
+      options: [
+        {
+          id: "continue",
+          text: "Continue down your dark path",
+          nextEpisode: "wasteland_crossroads",
+        },
+      ],
+      isFinal: true, // Mark this as a final scene
     },
   },
 

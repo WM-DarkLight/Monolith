@@ -31,6 +31,7 @@ export interface CampaignProgress {
   completedEpisodes: string[]
   startedAt: string
   lastPlayedAt: string
+  everCompleted?: boolean // Track if campaign was ever fully completed
 }
 
 export type CampaignRegistry = Record<string, Campaign>

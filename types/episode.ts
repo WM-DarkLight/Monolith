@@ -82,4 +82,5 @@ export interface Scene {
   text: string
   options: Option[]
   availableNpcs?: string[] // IDs of NPCs available for dialogue in this scene
+  isFinal?: boolean // Add this property to mark a scene as the final scene of an episode
 }

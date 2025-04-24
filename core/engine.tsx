@@ -458,10 +458,30 @@ export function GameEngine({
       setIsLoading(true)
       try {
         // If we're in a campaign and changing episodes, update campaign progress
+        // Find this section in the function (around line 500-510)
+        // If we're in a campaign and changing episodes, update campaign progress
         if (currentCampaign && campaignProgress && nextEpisodeId !== gameState.currentEpisodeId) {
           // Mark the current episode as completed
           const updatedProgress = await completeEpisode(currentCampaign.id, gameState.currentEpisodeId)
           setCampaignProgress(updatedProgress)
+        }
+
+        // Replace it with this updated logic that also checks for final scenes
+        if (currentCampaign && campaignProgress) {
+          // Check if we're changing episodes or if we've reached a final scene
+          const isChangingEpisode = nextEpisodeId !== gameState.currentEpisodeId
+          const isReachingFinalScene =
+            nextEpisodeId === gameState.currentEpisodeId &&
+            nextSceneId &&
+            currentEpisode.scenes &&
+            currentEpisode.scenes[nextSceneId] &&
+            currentEpisode.scenes[nextSceneId].isFinal
+
+          // Mark the current episode as completed if either condition is met
+          if (isChangingEpisode || isReachingFinalScene) {
+            const updatedProgress = await completeEpisode(currentCampaign.id, gameState.currentEpisodeId)
+            setCampaignProgress(updatedProgress)
+          }
         }
 
         const nextEpisode = await loadEpisode(nextEpisodeId, nextSceneId)

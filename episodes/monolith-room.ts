@@ -30,7 +30,7 @@ As you approach, the symbols begin to move faster, and the Monolith's surface ri
       condition: {
         flags: { "deciphered-symbols": true, "touched-monolith": true },
       },
-      nextEpisode: "monolith-room",
+      scene: "monolith-finale", // Add a final scene
     },
     {
       id: "retreat",
@@ -38,4 +38,26 @@ As you approach, the symbols begin to move faster, and the Monolith's surface ri
       nextEpisode: "ancient-chamber",
     },
   ],
+  // Add scenes to this episode
+  scenes: {
+    "monolith-finale": {
+      id: "monolith-finale",
+      title: "The Monolith Awakens",
+      text: `As you use the ancient artifact, the Monolith's surface begins to glow with an intense golden light. The floating symbols rush toward you, swirling around your body before being absorbed into your skin.
+
+Knowledge floods your mind - images, concepts, and understanding beyond anything you've experienced before. You see the history of the world, the purpose of the Monolith, and glimpses of possible futures.
+
+When the light fades, you find yourself changed. The Monolith has shared its secrets with you, and now you must decide what to do with this newfound knowledge and power.
+
+THE END`,
+      options: [
+        {
+          id: "continue",
+          text: "Embrace your destiny",
+          nextEpisode: "intro", // Return to the beginning for now
+        },
+      ],
+      isFinal: true, // Mark this as a final scene
+    },
+  },
 }

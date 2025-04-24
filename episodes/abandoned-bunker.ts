@@ -213,6 +213,7 @@ export const abandonedBunkerEpisode: Episode = {
           scene: "bunker-entrance", // Return to the start to play again
         },
       ],
+      isFinal: true, // Mark this as a final scene
     },
 
     // Ending scene - leave
@@ -235,6 +236,7 @@ export const abandonedBunkerEpisode: Episode = {
           scene: "bunker-entrance", // Return to the start to play again
         },
       ],
+      isFinal: true, // Mark this as a final scene
     },
   },
 

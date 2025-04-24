@@ -1,10 +1,10 @@
 "use client"
 
-import { Book, Save, Info, LogOut, Map, Radio, Shield, Zap, BookOpen } from "lucide-react"
+import { Book, Save, Info, LogOut, Map, Radio, Shield, Zap, BookOpen, Folder } from "lucide-react"
 
 interface DashboardSidebarProps {
   activeTab: string
-  setActiveTab: (tab: "episodes" | "campaigns" | "saves") => void
+  setActiveTab: (tab: "episodes" | "campaigns" | "saves" | "folders") => void
   episodeCount: number
   campaignCount: number
   saveCount: number
@@ -57,6 +57,19 @@ export function DashboardSidebar({
                   <span className="ml-auto bg-dark-gray text-gold text-xs px-2 py-0.5 border border-gold/30">
                     {episodeCount}
                   </span>
+                </button>
+              </li>
+              <li>
+                <button
+                  className={`flex items-center w-full px-3 py-2 ${
+                    activeTab === "folders"
+                      ? "bg-gold/20 text-gold border-l-2 border-gold"
+                      : "text-white/70 hover:bg-dark-gray hover:text-white border-l-2 border-transparent"
+                  } transition-colors`}
+                  onClick={() => setActiveTab("folders")}
+                >
+                  <Folder className="w-5 h-5 mr-3" />
+                  <span>Folders</span>
                 </button>
               </li>
               <li>
